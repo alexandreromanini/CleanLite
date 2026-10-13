@@ -139,7 +139,8 @@ def test_decodage_registre():
     assert split(r'"C:\Program Files\App\unins000.exe" /SILENT') == (r"C:\Program Files\App\unins000.exe", "/SILENT")
     assert split(r"C:\Program Files\App\uninstall.exe /x") == (r"C:\Program Files\App\uninstall.exe", "/x")
     assert split("MsiExec.exe /X{1234}") == ("MsiExec.exe", "/X{1234}")
-    assert startup.list_entries({}) == [] and programs.list_programs() == []  # stubs hors Windows
+    if sys.platform != "win32":
+        assert startup.list_entries({}) == [] and programs.list_programs() == []  # stubs hors Windows
 
 
 def test_analyseur_et_doublons():
