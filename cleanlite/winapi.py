@@ -178,13 +178,19 @@ def schtasks(*args):
     return _run(["schtasks", *args])
 
 
+def powershell(script):
+    """(ok, sortie) d'un script PowerShell, sortie en UTF-8."""
+    if not IS_WINDOWS:
+        return False, "PowerShell indisponible hors Windows"
+    return _run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 "[Console]::OutputEncoding=[Text.Encoding]::UTF8; " + script], encoding="utf-8")
+
+
 def powershell_json(script):
     """Exécute un script PowerShell et renvoie sa sortie (objets) en liste de dicts."""
     if not IS_WINDOWS:
         return []
-    ok, out = _run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                    "[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
-                    f"ConvertTo-Json -Compress -InputObject @({script})"], encoding="utf-8")
+    ok, out = powershell(f"ConvertTo-Json -Compress -InputObject @({script})")
     try:
         data = json.loads(out) if ok and out.strip() else []
     except ValueError:

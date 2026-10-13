@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from cleanlite import cleaner, diskscan, duplicates, programs, safety, startup  # noqa: E402
+from cleanlite import cleaner, diskscan, duplicates, programs, safety, schedule, startup  # noqa: E402
 
 
 def test_whitelist_refuse_les_chemins_windows_dangereux():
@@ -143,6 +143,13 @@ def test_decodage_registre():
     assert split("MsiExec.exe /X{1234}") == ("MsiExec.exe", "/X{1234}")
     if sys.platform != "win32":
         assert startup.list_entries({}) == [] and programs.list_programs() == []  # stubs hors Windows
+
+
+def test_planification():
+    assert schedule.ps_quote("C:\\Users\\O'Brien\\x") == "'C:\\Users\\O''Brien\\x'"  # apostrophe échappée
+    script = schedule.enable_script()
+    assert "-StartWhenAvailable" in script and "-AllowStartIfOnBatteries" in script
+    assert "--auto" in script and schedule.TASK in script
 
 
 def test_analyseur_et_doublons():
