@@ -125,7 +125,9 @@ def test_nettoyeur_navigateur_et_defauts():
         cats = {c.key: c for c in cleaner.categories({"LOCALAPPDATA": d})}
         assert cats["chrome_cache"].default and cats["temp"].default
         assert not cats["chrome_cookies"].default and not cats["chrome_history"].default
-        assert cleaner.run(cats["chrome_cache"], dry_run=True).bytes == 500
+        files = []
+        assert cleaner.run(cats["chrome_cache"], dry_run=True, collect=files).bytes == 500
+        assert files == [(str(prof / "Cache" / "Cache_Data" / "f_000001"), 500)]  # aperçu fichier par fichier
         assert cleaner.run(cats["chrome_cookies"], dry_run=True).bytes == 70
         assert cleaner.run(cats["chrome_cache"], dry_run=False).bytes == 500
         assert (prof / "Network" / "Cookies").exists() and (prof / "Bookmarks").exists()

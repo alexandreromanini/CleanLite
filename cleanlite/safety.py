@@ -88,10 +88,11 @@ def walk(top):
     yield top, 0, st.st_mtime, True
 
 
-def purge(target, roots, dry_run, stats, min_age_s=0):
+def purge(target, roots, dry_run, stats, min_age_s=0, collect=None):
     """Supprime target (fichier ou arborescence) élément par élément, chacun revérifié contre roots.
 
     dry_run : compte sans rien toucher. Fichier verrouillé/protégé : ignoré et compté, jamais forcé.
+    collect : liste qui reçoit (chemin, taille) de chaque fichier compté (aperçu).
     """
     cutoff = time.time() - min_age_s
     for path, size, mtime, is_dir in walk(str(target)):
@@ -115,5 +116,7 @@ def purge(target, roots, dry_run, stats, min_age_s=0):
             except OSError:
                 stats.skipped += 1
                 continue
+        if collect is not None:
+            collect.append((path, size))
         stats.files += 1
         stats.bytes += size

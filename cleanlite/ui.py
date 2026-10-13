@@ -1,4 +1,5 @@
 """Interface tkinter/ttk : un onglet par fonctionnalité ; les travaux longs tournent dans des threads."""
+import heapq
 import json
 import os
 import queue
@@ -14,6 +15,7 @@ from .safety import DATA_DIR, Stats, log, setup_log
 
 BASE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))  # PyInstaller ou dépôt
 SETTINGS = DATA_DIR / "settings.json"
+PREVIEW_MAX = 1000  # lignes affichées dans l'aperçu d'une catégorie
 EXCLUDED = ("Volontairement absents, car risqués pour Windows : nettoyage/réparation du registre, "
             "suppression de pilotes, désactivation de services, effacement de l'espace libre, "
             "« boost » et modification de réglages système. Aucune télémétrie, aucun accès réseau.")
@@ -146,11 +148,13 @@ class CleanerTab(ttk.Frame):
         self.app = app
         self.cats = {c.key: c for c in cleaner.categories()}
         self.checked = {k: c.default and not self._locked(c) for k, c in self.cats.items()}
+        self.preview = {}  # clé -> [(chemin, taille)] de la dernière analyse
 
         side = ttk.Frame(self)
         side.pack(side="right", fill="y", padx=(8, 0))
         self.btn_analyze = ttk.Button(side, text="Analyser", command=self.analyze)
         self.btn_analyze.pack(fill="x")
+        ttk.Button(side, text="Aperçu des fichiers", command=self.show_files).pack(fill="x", pady=(4, 0))
         self.btn_clean = ttk.Button(side, text="Nettoyer", command=self.clean)
         self.btn_clean.pack(fill="x", pady=4)
         ttk.Checkbutton(side, text="Mode simulation", variable=app.dry_run).pack(anchor="w", pady=4)
@@ -196,8 +200,17 @@ class CleanerTab(ttk.Frame):
         self.app.bg(lambda: [(c, cleaner.run(c, dry_run)) for c in cats], done)
 
     def analyze(self):
+        cats = [c for k, c in self.cats.items() if self.checked[k]]
+
+        def work():
+            out = []
+            for c in cats:
+                files = []
+                out.append((c, cleaner.run(c, True, files), files))
+            return out
         self.result["text"] = "Analyse en cours…"
-        self._run([c for k, c in self.cats.items() if self.checked[k]], True, self._analyzed)
+        self._busy(True)
+        self.app.bg(work, self._analyzed)
 
     def _analyzed(self, res):
         self._busy(False)
@@ -205,10 +218,33 @@ class CleanerTab(ttk.Frame):
             return
         for k in self.cats:
             self.tree.set(k, "size", "")
-        for c, st in res:
+        self.preview = {c.key: files for c, _, files in res}
+        for c, st, _ in res:
             self.tree.set(c.key, "size", "—" if c.key == "dns" else human(st.bytes))
-        total = sum(st.bytes for _, st in res)
-        self.result["text"] = f"Récupérable : {human(total)}\n\nCliquez sur « Nettoyer » pour libérer cet espace."
+        total = sum(st.bytes for _, st, _ in res)
+        self.result["text"] = (f"Récupérable : {human(total)}\n\nSélectionnez une catégorie puis « Aperçu des "
+                               "fichiers » pour voir le détail, ou « Nettoyer » pour libérer cet espace.")
+
+    def show_files(self):
+        key = self.tree.focus()
+        c = self.cats.get(key)
+        if c is None or key not in self.preview:
+            messagebox.showinfo("Aperçu", "Cochez la catégorie, lancez « Analyser », puis sélectionnez-la.")
+            return
+        if key in ("recycle", "dns"):
+            messagebox.showinfo("Aperçu", "Cette catégorie est vidée en bloc par Windows : pas de liste de fichiers.")
+            return
+        files = self.preview[key]
+        top = tk.Toplevel(self)
+        top.title(f"Aperçu : {c.group} – {c.label}")
+        top.geometry("820x460")
+        more = f" Les {PREVIEW_MAX} plus gros sont affichés." if len(files) > PREVIEW_MAX else ""
+        ttk.Label(top, padding=6, text=f"{len(files)} fichier(s), {human(sum(s for _, s in files))}. "
+                                       f"Rien n'a été supprimé.{more}").pack(anchor="w")
+        frame, tree = scrolled_tree(top, [("path", "Fichier", 680), ("size", "Taille", 100)])
+        frame.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        for path, size in heapq.nlargest(PREVIEW_MAX, files, key=lambda f: f[1]):
+            tree.insert("", "end", values=(path, human(size)))
 
     def clean(self):
         cats = [c for k, c in self.cats.items() if self.checked[k]]

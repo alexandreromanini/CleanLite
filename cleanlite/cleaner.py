@@ -75,8 +75,8 @@ def categories(env=os.environ):
     return cats
 
 
-def run(cat, dry_run):
-    """Analyse (dry_run=True : rien n'est touché) ou nettoie une catégorie."""
+def run(cat, dry_run, collect=None):
+    """Analyse (dry_run=True : rien n'est touché) ou nettoie une catégorie ; collect : voir purge."""
     st = Stats()
     if cat.key == "recycle":
         st.bytes, st.files = winapi.recycle_bin_size()
@@ -92,7 +92,7 @@ def run(cat, dry_run):
             st.skipped += 1
         elif root and os.path.isdir(root):
             for match in glob.glob(os.path.join(glob.escape(root), pattern), recursive=True):
-                purge(match, [root], dry_run, st, cat.min_age_h * 3600)
+                purge(match, [root], dry_run, st, cat.min_age_h * 3600, collect)
     if not dry_run:
         log.info("Nettoyage %s – %s : %d fichiers, %d octets, %d ignorés",
                  cat.group, cat.label, st.files, st.bytes, st.skipped)
