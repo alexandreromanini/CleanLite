@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from cleanlite import cleaner, programs, safety, startup  # noqa: E402
+from cleanlite import cleaner, diskscan, duplicates, programs, safety, startup  # noqa: E402
 
 
 def test_whitelist_refuse_les_chemins_windows_dangereux():
@@ -122,6 +122,24 @@ def test_decodage_registre():
     assert split(r"C:\Program Files\App\uninstall.exe /x") == (r"C:\Program Files\App\uninstall.exe", "/x")
     assert split("MsiExec.exe /X{1234}") == ("MsiExec.exe", "/X{1234}")
     assert startup.list_entries({}) == [] and programs.list_programs() == []  # stubs hors Windows
+
+
+def test_analyseur_et_doublons():
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        expected = _arbo(root)
+        tree = diskscan.scan(str(root))
+        assert tree.size == expected and tree.children[0].name == "a"  # trié par taille
+        (root / "a" / "copie.tmp").write_bytes(b"x" * 1000)       # = f1.tmp
+        (root / "a" / "b" / "autre.tmp").write_bytes(b"y" * 1000)  # même taille, contenu différent
+        groups = duplicates.find(str(root), dirs=[str(root / "a" / "b")])
+        assert groups == [(1000, sorted([str(root / "a" / "copie.tmp"), str(root / "f1.tmp")]))]
+        assert duplicates.is_system_path(root / "a" / "b" / "autre.tmp", [str(root / "a" / "b")])
+        try:
+            duplicates.find(str(root / "a" / "b"), dirs=[str(root / "a" / "b")])
+            raise AssertionError("dossier système accepté")
+        except PermissionError:
+            pass
 
 
 if __name__ == "__main__":
