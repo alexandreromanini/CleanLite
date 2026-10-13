@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from cleanlite import cleaner, safety  # noqa: E402
+from cleanlite import cleaner, programs, safety, startup  # noqa: E402
 
 
 def test_whitelist_refuse_les_chemins_windows_dangereux():
@@ -112,6 +112,16 @@ def test_nettoyeur_navigateur_et_defauts():
         assert cleaner.run(cats["chrome_cache"], dry_run=False).bytes == 500
         assert (prof / "Network" / "Cookies").exists() and (prof / "Bookmarks").exists()
         assert not (prof / "Cache").exists()
+
+
+def test_decodage_registre():
+    assert startup.is_enabled(None) and startup.is_enabled(b"\x02" + bytes(11))
+    assert startup.is_enabled(b"\x06" + bytes(11)) and not startup.is_enabled(b"\x03" + bytes(11))
+    split = programs.split_command
+    assert split(r'"C:\Program Files\App\unins000.exe" /SILENT') == (r"C:\Program Files\App\unins000.exe", "/SILENT")
+    assert split(r"C:\Program Files\App\uninstall.exe /x") == (r"C:\Program Files\App\uninstall.exe", "/x")
+    assert split("MsiExec.exe /X{1234}") == ("MsiExec.exe", "/X{1234}")
+    assert startup.list_entries({}) == [] and programs.list_programs() == []  # stubs hors Windows
 
 
 if __name__ == "__main__":
