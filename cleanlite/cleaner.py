@@ -91,12 +91,17 @@ def run(cat, dry_run):
     return st
 
 
+def auto_categories():
+    """Catégories sûres du nettoyage planifié : cochées par défaut, sans admin, hors corbeille."""
+    return [c for c in categories() if c.default and not c.admin and c.key != "recycle"]
+
+
 def run_auto():
-    """Nettoyage planifié : catégories cochées par défaut, sans admin, hors corbeille et navigateurs ouverts."""
+    """Nettoyage planifié sans interface ; les navigateurs ouverts sont passés."""
     running = winapi.running_processes()
     total = Stats()
-    for c in categories():
-        if c.default and not c.admin and c.key != "recycle" and c.process not in running:
+    for c in auto_categories():
+        if c.process not in running:
             total.add(run(c, dry_run=False))
     log.info("Nettoyage planifié terminé : %.1f Mo libérés, %d fichiers ignorés",
              total.bytes / 1e6, total.skipped)

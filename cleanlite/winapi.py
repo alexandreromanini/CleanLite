@@ -34,6 +34,11 @@ if IS_WINDOWS:
                     ("lpszProgressTitle", wintypes.LPCWSTR)]
 
 
+def _com():
+    """Les API shell32 de la corbeille veulent COM initialisé sur le thread appelant (threads de l'UI)."""
+    ctypes.windll.ole32.CoInitialize(None)  # S_FALSE si déjà fait : sans effet
+
+
 def _run(args, encoding="oem", timeout=60):
     """Lance une commande console sans ouvrir de fenêtre ; renvoie (ok, sortie)."""
     try:
@@ -41,7 +46,9 @@ def _run(args, encoding="oem", timeout=60):
                            timeout=timeout, creationflags=0x08000000)  # CREATE_NO_WINDOW
     except (OSError, subprocess.TimeoutExpired) as e:
         return False, str(e)
-    return r.returncode == 0, (r.stdout or "") + (r.stderr or "")
+    if r.returncode == 0:
+        return True, r.stdout or ""  # stderr à part : un avertissement casserait le JSON
+    return False, (r.stdout or "") + (r.stderr or "")
 
 
 def init_process():
@@ -86,6 +93,7 @@ def recycle_bin_size():
     """(octets, éléments) dans la corbeille, tous lecteurs confondus."""
     if not IS_WINDOWS:
         return 0, 0
+    _com()
     info = _SHQUERYRBINFO(cbSize=ctypes.sizeof(_SHQUERYRBINFO))
     if ctypes.windll.shell32.SHQueryRecycleBinW(None, ctypes.byref(info)) != 0:
         return 0, 0
@@ -95,6 +103,7 @@ def recycle_bin_size():
 def empty_recycle_bin():
     if not IS_WINDOWS:
         return False
+    _com()
     flags = 0x1 | 0x2 | 0x4  # SHERB_NOCONFIRMATION | NOPROGRESSUI | NOSOUND
     return ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, flags) == 0
 
@@ -103,6 +112,7 @@ def send_to_trash(path):
     """Envoie un fichier à la corbeille. Lève OSError en cas d'échec."""
     if not IS_WINDOWS:
         raise OSError("Corbeille disponible uniquement sous Windows")
+    _com()
     # FOF_SILENT | NOCONFIRMATION | ALLOWUNDO | NOERRORUI | WANTNUKEWARNING :
     # si la corbeille est impossible (lecteur réseau…), Windows demande avant de supprimer pour de bon.
     op = _SHFILEOPSTRUCTW(wFunc=3, pFrom=os.path.abspath(path) + "\0",
