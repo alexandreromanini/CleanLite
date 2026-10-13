@@ -46,6 +46,7 @@ def find(folder, min_size=1, cancel=None, progress=None, dirs=None):
         raise PermissionError(f"Dossier système refusé : {folder}")
     blocked = {osp.normcase(osp.realpath(d)) for d in dirs}
     by_size = defaultdict(list)
+    seen = set()
     # On ne traverse jamais de lien : un sous-dossier système n'est atteignable que par lui-même.
     for dirpath, dirnames, filenames in os.walk(osp.realpath(folder)):
         if cancel is not None and cancel.is_set():
@@ -69,8 +70,14 @@ def find(folder, min_size=1, cancel=None, progress=None, dirs=None):
             except OSError:
                 continue
             # Les fichiers OneDrive « à la demande » sont des points d'analyse : les lire les téléchargerait.
-            if stat.S_ISREG(st.st_mode) and not is_link(st) and st.st_size >= min_size:
-                by_size[st.st_size].append(p)
+            if not stat.S_ISREG(st.st_mode) or is_link(st) or st.st_size < min_size:
+                continue
+            # Liens physiques : un même fichier sous deux noms, en supprimer un ne libère rien.
+            inode = (st.st_dev, st.st_ino)
+            if st.st_ino and inode in seen:
+                continue
+            seen.add(inode)
+            by_size[st.st_size].append(p)
 
     groups = []
     for size, paths in by_size.items():

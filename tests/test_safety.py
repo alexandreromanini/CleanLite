@@ -153,8 +153,9 @@ def test_analyseur_et_doublons():
         assert tree.size == expected and tree.children[0].name == "a"  # trié par taille
         (root / "a" / "copie.tmp").write_bytes(b"x" * 1000)       # = f1.tmp
         (root / "a" / "b" / "autre.tmp").write_bytes(b"y" * 1000)  # même taille, contenu différent
+        os.link(root / "a" / "f2.tmp", root / "lien_physique.tmp")  # même fichier, pas un doublon
         groups = duplicates.find(str(root), dirs=[str(root / "a" / "b")])
-        assert groups == [(1000, sorted([str(root / "a" / "copie.tmp"), str(root / "f1.tmp")]))]
+        assert groups == [(1000, sorted([str(root / "a" / "copie.tmp"), str(root / "f1.tmp")]))], groups
         assert duplicates.is_system_path(root / "a" / "b" / "autre.tmp", [str(root / "a" / "b")])
         k = duplicates.keeper
         assert k(["/p/Copie de photo.jpg", "/p/photo.jpg"]) == "/p/photo.jpg"
