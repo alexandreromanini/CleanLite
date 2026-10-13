@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from cleanlite import safety  # noqa: E402
+from cleanlite import cleaner, safety  # noqa: E402
 
 
 def test_whitelist_refuse_les_chemins_windows_dangereux():
@@ -94,6 +94,24 @@ def test_age_minimum():
         for f in (new, old):
             safety.purge(f, [d], dry_run=False, stats=st, min_age_s=86400)
         assert new.exists() and not old.exists() and st.bytes == 2
+
+
+def test_nettoyeur_navigateur_et_defauts():
+    with tempfile.TemporaryDirectory() as d:
+        prof = Path(d, "Google", "Chrome", "User Data", "Default")
+        (prof / "Cache" / "Cache_Data").mkdir(parents=True)
+        (prof / "Network").mkdir()
+        (prof / "Cache" / "Cache_Data" / "f_000001").write_bytes(b"x" * 500)
+        (prof / "Network" / "Cookies").write_bytes(b"c" * 70)
+        (prof / "Bookmarks").write_bytes(b"favoris")
+        cats = {c.key: c for c in cleaner.categories({"LOCALAPPDATA": d})}
+        assert cats["chrome_cache"].default and cats["temp"].default
+        assert not cats["chrome_cookies"].default and not cats["chrome_history"].default
+        assert cleaner.run(cats["chrome_cache"], dry_run=True).bytes == 500
+        assert cleaner.run(cats["chrome_cookies"], dry_run=True).bytes == 70
+        assert cleaner.run(cats["chrome_cache"], dry_run=False).bytes == 500
+        assert (prof / "Network" / "Cookies").exists() and (prof / "Bookmarks").exists()
+        assert not (prof / "Cache").exists()
 
 
 if __name__ == "__main__":
