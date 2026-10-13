@@ -2,6 +2,10 @@
 
 Utilitaire de nettoyage **prudent** pour Windows 10/11, inspiré de CCleaner. Python + tkinter, aucune dépendance externe, aucune télémétrie, aucun accès réseau.
 
+![Page Nettoyeur après analyse](docs/apercu.png)
+
+*Page Nettoyeur après une analyse (capture de développement, données d'exemple).*
+
 ## Installation (Windows)
 
 ```powershell
@@ -15,7 +19,7 @@ Désinstallation : `powershell -ExecutionPolicy Bypass -File uninstall.ps1`. Ex�
 
 ## Fonctionnalités
 
-| Onglet | Rôle |
+| Page | Rôle |
 |---|---|
 | Nettoyeur | Temporaires, corbeille, caches Chrome/Edge/Brave/Firefox (cookies et historique décochés par défaut), miniatures, DNS, rapports d'erreur, journaux, cache Windows Update, cache des polices, éléments récents. « Analyser » montre la taille récupérable, « Nettoyer » le total libéré. |
 | Démarrage | Clés Run HKCU/HKLM, dossier Démarrage, tâches planifiées : activer/désactiver, jamais supprimer. |

@@ -26,6 +26,12 @@ if IS_WINDOWS:
         _fields_ = [("cbSize", wintypes.DWORD), ("i64Size", ctypes.c_longlong),
                     ("i64NumItems", ctypes.c_longlong)]
 
+    class _MEMORYSTATUSEX(ctypes.Structure):
+        _fields_ = [("dwLength", wintypes.DWORD), ("dwMemoryLoad", wintypes.DWORD)]
+        _fields_ += [(n, ctypes.c_ulonglong) for n in ("ullTotalPhys", "ullAvailPhys", "ullTotalPageFile",
+                                                      "ullAvailPageFile", "ullTotalVirtual", "ullAvailVirtual",
+                                                      "ullAvailExtendedVirtual")]
+
     class _SHFILEOPSTRUCTW(ctypes.Structure):
         _pack_ = _PACK
         _fields_ = [("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT), ("pFrom", wintypes.LPCWSTR),
@@ -132,6 +138,14 @@ def running_processes():
         return set()
     ok, out = _run(["tasklist", "/FO", "CSV", "/NH"])
     return {row[0].lower() for row in csv.reader(out.splitlines()) if row} if ok else set()
+
+
+def memory_total():
+    """Mémoire physique totale en octets (0 si inconnue)."""
+    if not IS_WINDOWS:
+        return 0
+    m = _MEMORYSTATUSEX(dwLength=ctypes.sizeof(_MEMORYSTATUSEX))
+    return m.ullTotalPhys if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)) else 0
 
 
 def drives():

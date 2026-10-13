@@ -31,17 +31,17 @@ def categories(env=os.environ):
     wer_user = p("LOCALAPPDATA", "Microsoft", "Windows", "WER")
     wer_sys = os.path.join(env.get("ProgramData", r"C:\ProgramData"), "Microsoft", "Windows", "WER")
     cats = [
-        Category("temp", "Fichiers temporaires (utilisateur)", "Windows", [(p("TEMP"), "*")], min_age_h=24),
+        Category("temp", "Fichiers temporaires", "Windows", [(p("TEMP"), "*")], min_age_h=24),
         Category("wintemp", "Fichiers temporaires Windows", "Windows",
                  [(os.path.join(win, "Temp"), "*")], admin=True, min_age_h=24),
         Category("recycle", "Corbeille", "Windows", []),
         Category("thumbs", "Cache des miniatures", "Windows",
                  [(p("LOCALAPPDATA", "Microsoft", "Windows", "Explorer"), "thumbcache_*.db")]),
         Category("dns", "Cache DNS", "Windows", []),
-        Category("crash", "Rapports d'erreur et dumps (utilisateur)", "Windows",
+        Category("crash", "Rapports d'erreur et dumps", "Windows",
                  [(wer_user, "ReportArchive/*"), (wer_user, "ReportQueue/*"),
                   (p("LOCALAPPDATA", "CrashDumps"), "*")]),
-        Category("syslogs", "Journaux système (.log, minidumps, WER)", "Windows",
+        Category("syslogs", "Journaux et rapports système", "Windows",
                  [(os.path.join(win, "Logs"), "**/*.log"), (os.path.join(win, "Minidump"), "*.dmp"),
                   (wer_sys, "ReportArchive/*"), (wer_sys, "ReportQueue/*")], admin=True),
         Category("wu", "Cache Windows Update", "Windows",
