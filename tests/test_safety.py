@@ -25,7 +25,25 @@ def test_whitelist_refuse_les_chemins_windows_dangereux():
         safety.osp = real_osp
 
 
+def test_racine_corrompue_refusee():
+    real_osp, safety.osp = safety.osp, ntpath
+    try:
+        crit = [r"C:\Users\a", r"C:\Windows", r"C:\Program Files"]
+        assert not safety.is_safe_root("C:\\", crit)                      # TEMP=C:\
+        assert not safety.is_safe_root("D:\\", crit)                      # racine d'un autre lecteur
+        assert not safety.is_safe_root(r"C:\Users\a", crit)               # TEMP=%USERPROFILE%
+        assert not safety.is_safe_root(r"C:\Users", crit)                 # contient le profil
+        assert safety.is_safe_root(r"C:\Users\a\AppData\Local\Temp", crit)
+        assert safety.is_safe_root(r"C:\Windows\Temp", crit)
+    finally:
+        safety.osp = real_osp
+    cat = cleaner.Category("t", "t", "t", [(str(Path.home()), "*")])
+    assert cleaner.run(cat, dry_run=True) == safety.Stats(skipped=1)  # le dossier personnel n'est jamais vidé
+
+
 def test_dotdot_et_liens_sortants_refuses():
+    if sys.platform == "win32":
+        return  # créer des symlinks y demande des privilèges ; la logique testée est la même
     with tempfile.TemporaryDirectory() as d:
         root, out = Path(d, "autorise"), Path(d, "dehors")
         root.mkdir()
@@ -69,8 +87,8 @@ def test_dry_run_ne_supprime_rien_et_taille_exacte():
 
 
 def test_fichier_protege_ignore_et_compte():
-    if os.geteuid() == 0:
-        return  # root ignore les permissions
+    if sys.platform == "win32" or os.geteuid() == 0:
+        return  # chmod ne verrouille rien sous Windows ; root ignore les permissions
     with tempfile.TemporaryDirectory() as d:
         ro = Path(d, "ro")
         ro.mkdir()

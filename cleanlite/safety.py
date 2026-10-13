@@ -53,6 +53,17 @@ def is_allowed(path, roots):
     return False
 
 
+def is_safe_root(root, critical):
+    """Refuse une racine de nettoyage qui serait une racine de lecteur ou contiendrait un dossier critique.
+
+    Les racines viennent de variables d'environnement : TEMP=C:\\ ou TEMP=%USERPROFILE% ne doit rien vider.
+    """
+    r = _norm(root)
+    if osp.dirname(r) == r:
+        return False
+    return not any(c and (_norm(c) == r or is_allowed(c, [root])) for c in critical)
+
+
 def is_link(st):
     """Lien symbolique ou point d'analyse Windows (jonction, fichier OneDrive à la demande…)."""
     return stat.S_ISLNK(st.st_mode) or bool(getattr(st, "st_file_attributes", 0)

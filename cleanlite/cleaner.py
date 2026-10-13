@@ -2,9 +2,13 @@
 import glob
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from . import winapi
-from .safety import Stats, log, purge
+from .safety import Stats, is_safe_root, log, purge
+
+CRITICAL_VARS = ("USERPROFILE", "SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramData",
+                 "APPDATA", "LOCALAPPDATA")
 
 
 @dataclass
@@ -81,8 +85,12 @@ def run(cat, dry_run):
     elif cat.key == "dns":
         if not dry_run and not winapi.flush_dns():
             st.skipped = 1
+    critical = [str(Path.home())] + [os.environ.get(k) for k in CRITICAL_VARS]
     for root, pattern in cat.targets:
-        if root and os.path.isdir(root):
+        if root and not is_safe_root(root, critical):
+            log.warning("Racine refusée (contient un dossier critique) : %s", root)
+            st.skipped += 1
+        elif root and os.path.isdir(root):
             for match in glob.glob(os.path.join(glob.escape(root), pattern), recursive=True):
                 purge(match, [root], dry_run, st, cat.min_age_h * 3600)
     if not dry_run:
