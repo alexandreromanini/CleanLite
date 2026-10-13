@@ -1,0 +1,2 @@
+# Aucune dependance : CleanLite n'utilise que la bibliotheque standard (tkinter, winreg, ctypes).
+# PyInstaller (utilise par build_exe.ps1) est installe a part, uniquement pour produire le .exe.
