@@ -2,14 +2,19 @@
 import hashlib
 import os
 import os.path as osp
+import re
 import stat
 from collections import defaultdict
+from pathlib import Path
 
 from . import winapi
 from .safety import is_allowed, is_link, log
 
 SKIP_NAMES = {"$recycle.bin", "system volume information", "windows", "program files",
               "program files (x86)", "programdata", "appdata"}
+# « Copie de x », « Copy of x », « x - Copie », « x - Copie (2) », « x (1) »
+COPY_NAME = re.compile(r"^(copie de|copy of) | - (copie|copy)( \(\d+\))?$| \(\d+\)$", re.IGNORECASE)
+DOWNLOAD_DIRS = {"downloads", "téléchargements"}
 
 
 def system_dirs(env=os.environ):
@@ -86,8 +91,21 @@ def find(folder, min_size=1, cancel=None, progress=None, dirs=None):
 
 
 def keeper(paths):
-    """Fichier conservé par défaut dans un groupe ; les autres sont pré-cochés pour la corbeille."""
-    return paths[0]
+    """Fichier conservé par défaut dans un groupe ; les autres sont pré-cochés pour la corbeille.
+
+    Par ordre de priorité : nom qui n'a pas l'air d'une copie, hors Téléchargements, chemin le moins
+    profond, plus ancien, puis ordre alphabétique (résultat stable pour un même groupe).
+    """
+    def score(p):
+        parts = Path(p).parts
+        try:
+            mtime = os.stat(p).st_mtime
+        except OSError:  # disparu depuis l'analyse
+            mtime = float("inf")
+        return (bool(COPY_NAME.search(Path(p).stem)),
+                any(s.lower() in DOWNLOAD_DIRS for s in parts),
+                len(parts), mtime, p)
+    return min(paths, key=score)
 
 
 def trash(path):

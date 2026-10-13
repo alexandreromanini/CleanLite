@@ -154,6 +154,19 @@ def test_analyseur_et_doublons():
         groups = duplicates.find(str(root), dirs=[str(root / "a" / "b")])
         assert groups == [(1000, sorted([str(root / "a" / "copie.tmp"), str(root / "f1.tmp")]))]
         assert duplicates.is_system_path(root / "a" / "b" / "autre.tmp", [str(root / "a" / "b")])
+        k = duplicates.keeper
+        assert k(["/p/Copie de photo.jpg", "/p/photo.jpg"]) == "/p/photo.jpg"
+        assert k(["/p/photo (1).jpg", "/p/photo - Copie.jpg", "/p/x/photo.jpg"]) == "/p/x/photo.jpg"
+        assert k(["/h/Downloads/a.pdf", "/h/Documents/2020/a.pdf"]) == "/h/Documents/2020/a.pdf"
+        assert k(["/h/Images/2020/a.jpg", "/h/Images/a.jpg"]) == "/h/Images/a.jpg"
+        assert k(["/p/zz/a.jpg", "/p/Album (2020)/a.jpg"]) == "/p/Album (2020)/a.jpg"  # seul le nom compte
+        (root / "x").mkdir()
+        (root / "y").mkdir()
+        new, old = root / "x" / "a.bin", root / "y" / "a.bin"
+        new.write_bytes(b"1")
+        old.write_bytes(b"1")
+        os.utime(old, (time.time() - 86400,) * 2)
+        assert k([str(new), str(old)]) == str(old)  # même profondeur : le plus ancien gagne
         try:
             duplicates.find(str(root / "a" / "b"), dirs=[str(root / "a" / "b")])
             raise AssertionError("dossier système accepté")
