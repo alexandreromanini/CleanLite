@@ -9,12 +9,12 @@ Utilitaire de nettoyage **prudent** pour Windows 10/11, inspiré de CCleaner. Py
 ## Installation (Windows)
 
 ```powershell
-git clone <url-du-depot> CleanLite
+git clone https://github.com/alexandreromanini/CleanLite.git
 cd CleanLite
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-Un raccourci **CleanLite** est créé sur le Bureau et dans le menu Démarrer. Si Python 3.11+ manque, le script indique la commande `winget` à lancer.
+Un raccourci **CleanLite** est créé sur le Bureau et dans le menu Démarrer. Prérequis : Python 3.11+, installable avec `winget install -e --id Python.Python.3.12` (puis ouvrir un nouveau terminal). Sans Git, téléchargez le ZIP depuis GitHub (« Code » → « Download ZIP »), décompressez-le et lancez `install.ps1` depuis ce dossier.
 Désinstallation : `powershell -ExecutionPolicy Bypass -File uninstall.ps1`. Exécutable autonome (optionnel) : `build_exe.ps1` produit `dist\CleanLite.exe`.
 
 ## Fonctionnalités
@@ -40,6 +40,5 @@ Désinstallation : `powershell -ExecutionPolicy Bypass -File uninstall.ps1`. Ex�
 ## Développement
 
 ```bash
-python3 tests/test_safety.py      # tourne aussi sous Linux
-python3 tools/make_icon.py        # régénère assets/icon.ico (Pillow requis)
+python3 tests/test_safety.py      # tests de sécurité, exécutables aussi sous Linux
 ```
